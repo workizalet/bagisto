@@ -1,0 +1,34 @@
+FROM php:8.1-apache
+
+# Instala dependencias necesarias
+RUN apt-get update && apt-get install -y \
+    git zip unzip curl libzip-dev libpng-dev libonig-dev libxml2-dev \
+    && docker-php-ext-install pdo_mysql zip gd
+
+# Instala Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Copia el proyecto
+COPY . /var/www/html/
+
+# Establece permisos
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 755 /var/www/html
+
+# Establece el directorio de trabajo
+WORKDIR /var/www/html
+
+# Instala dependencias PHP
+RUN composer install --no-dev --optimize-autoloader
+
+# Habilita mod_rewrite de Apache
+RUN a2enmod rewrite
+
+# Configura Apache
+RUN echo "<Directory /var/www/html/public>\n\
+    AllowOverride All\n\
+</Directory>" >> /etc/apache2/apache2.conf
+
+EXPOSE 80
+
+CMD ["apache2-foreground"]
